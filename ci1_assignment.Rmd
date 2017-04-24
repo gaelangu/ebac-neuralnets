@@ -1,0 +1,97 @@
+---
+title: "Computational Intelligence I Assignment"
+author: "Gaelan Gu"
+date: "20/04/2017"
+output: word_document
+---
+
+# Neural Network Ensemble for Diabetes Dataset
+
+```{r}
+# Data import
+diabetes = read.csv('./datasets/Diabetes.csv', header = F)
+colnames(diabetes) = c('no.of.times.preg', 'plasma.glucose.conc', 'diastolic.pressure',
+                       'triceps.skin.fold.thick', 'serum.insulin', 'bmi', 'diab.pedigree.func',
+                       'age', 'positive.test')
+
+# Factorizing class variable
+diabetes$positive.test = as.factor(as.character(diabetes$positive.test))
+
+summary(diabetes)
+```
+
+```{r}
+# Train-test split
+library(caTools)
+set.seed(111)
+diabetes$split = sample.split(diabetes$positive.test, SplitRatio = 0.75)
+
+write.csv(diabetes, file = './datasets/Diabetes_split.csv', row.names = F)
+
+train = subset(diabetes, split == T)
+test = subset(diabetes, split == F)
+
+# Excluding split columns
+train = train[-10]
+test = test[-10]
+```
+
+```{r}
+# Loading neural net packages
+# install.packages(c('nnet', 'neuralnet', 'pnn', 'RSNNS', 'NeuralNetTools'))
+library(nnet)
+library(neuralnet)
+library(pnn)
+library(RSNNS)
+library(NeuralNetTools)
+```
+
+## Single-Layer Neural Network
+
+```{r}
+# Building the neural net model
+diabetes_nnet = nnet(positive.test ~ ., data = train,
+                     size = 8, maxit = 10000, decay = 0.0001)
+
+summary(diabetes_nnet)
+```
+
+
+```{r}
+# Prediction and confusion matrix
+pred = predict(diabetes_nnet, newdata = test, type = 'class')
+cm = table(true = test$positive.test, predicted = pred)
+library(caret)
+cm1 = confusionMatrix(cm)
+cm1
+```
+
+
+```{r}
+plotnet(diabetes_nnet)
+```
+
+
+## Probabilistic Neural Network
+
+```{r}
+# Building the PNN
+diabetes_pnet = learn(train, category.column = length(train))
+diabetes_pnet = smooth(diabetes_pnet, sigma = 0.5)
+
+result = test
+test = test[, 1:ncol(test)-1]
+
+for(i in 1:nrow(test)) {
+  vec = as.matrix(test[i, ])
+  res = guess(diabetes_pnet, vec)
+  
+  if(is.nan(res)){
+    cat('Entry ', i, ' is NaN!')
+  } else{
+    result$predict[i] = res
+  }
+}   
+
+```
+
