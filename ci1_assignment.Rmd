@@ -24,16 +24,18 @@ summary(diabetes)
 # Train-test split
 library(caTools)
 set.seed(111)
-diabetes$split = sample.split(diabetes$positive.test, SplitRatio = 0.75)
+diabetes$split = sample.split(diabetes$positive.test, SplitRatio = 0.7)
 
-write.csv(diabetes, file = './datasets/Diabetes_split.csv', row.names = F)
-
-train = subset(diabetes, split == T)
-test = subset(diabetes, split == F)
+diabetes_train = subset(diabetes, split == T)
+diabetes_test = subset(diabetes, split == F)
 
 # Excluding split columns
-train = train[-10]
-test = test[-10]
+diabetes_train = diabetes_train[-10]
+diabetes_test = diabetes_test[-10]
+
+# Writing CSV for train and test
+write.table(diabetes_train, sep = ',', file = './datasets/Diabetes_train.csv', row.names = F)
+write.table(diabetes_test, sep = ',', file = './datasets/Diabetes_test.csv', row.names = F)
 ```
 
 ```{r}
@@ -41,7 +43,7 @@ test = test[-10]
 # install.packages(c('nnet', 'neuralnet', 'pnn', 'RSNNS', 'NeuralNetTools'))
 library(nnet)
 library(neuralnet)
-library(pnn)
+library(grnn)
 library(RSNNS)
 library(NeuralNetTools)
 ```
@@ -50,7 +52,7 @@ library(NeuralNetTools)
 
 ```{r}
 # Building the neural net model
-diabetes_nnet = nnet(positive.test ~ ., data = train,
+diabetes_nnet = nnet(positive.test ~ ., data = diabetes_train,
                      size = 8, maxit = 10000, decay = 0.0001)
 
 summary(diabetes_nnet)
@@ -59,8 +61,8 @@ summary(diabetes_nnet)
 
 ```{r}
 # Prediction and confusion matrix
-pred = predict(diabetes_nnet, newdata = test, type = 'class')
-cm = table(true = test$positive.test, predicted = pred)
+pred = predict(diabetes_nnet, newdata = diabetes_test, type = 'class')
+cm = table(true = diabetes_test$positive.test, predicted = pred)
 library(caret)
 cm1 = confusionMatrix(cm)
 cm1
@@ -72,26 +74,61 @@ plotnet(diabetes_nnet)
 ```
 
 
-## Probabilistic Neural Network
+## General Regression Neural Network
 
 ```{r}
-# Building the PNN
-diabetes_pnet = learn(train, category.column = length(train))
-diabetes_pnet = smooth(diabetes_pnet, sigma = 0.5)
+# Unfactorizing class variable
+diabetes_train$positive.test = as.numeric(as.character(diabetes_train$positive.test))
+diabetes_test$positive.test = as.numeric(as.character(diabetes_test$positive.test))
 
-result = test
-test = test[, 1:ncol(test)-1]
+# Building the GRNN
+diabetes_gnet = learn(set = diabetes_train, variable.column = length(diabetes_train))
+diabetes_gnet = smooth(diabetes_gnet, sigma = 0.5)
 
-for(i in 1:nrow(test)) {
-  vec = as.matrix(test[i, ])
-  res = guess(diabetes_pnet, vec)
+diabetes_test$predict = -1
+diabetes_testsub = diabetes_test[, 1:8]
+
+vec = as.matrix(diabetes_testsub[1, ])
+res = guess(diabetes_gnet, vec)
+
+for(i in 1:nrow(diabetes_testsub)) {
+  vec = as.matrix(diabetes_testsub[i, ])
+  res = guess(diabetes_gnet, vec)
   
-  if(is.nan(res)){
-    cat('Entry ', i, ' is NaN!')
+  if(anyNA(res)) {
+    cat("Entry ",i," Generated NaN result!\n")
   } else{
-    result$predict[i] = res
+    diabetes_test$predict[i] = res
   }
-}   
+}
 
+# Rounding predictions
+diabetes_test$predictclass = round(diabetes_test$predict)
 ```
 
+
+# Neural Network Emsemble for Wine Quality Dataset
+
+```{r}
+# Data import
+# wine = read.csv('./datasets/winequality-white.csv')
+# 
+# summary(wine)
+```
+
+```{r}
+# Train-test split
+# set.seed(111)
+# wine$split = sample.split(wine$quality, SplitRatio = 0.7)
+# 
+# wine_train = subset(wine, split == T)
+# wine_test = subset(wine, split == F)
+# 
+# # Excluding split columns
+# wine_train = wine_train[-13]
+# wine_test = wine_test[-13]
+# 
+# # Writing CSV for train and test
+# write.table(wine_train, sep = ',', file = './datasets/winequality_train.csv', row.names = F)
+# write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.names = F)
+```
