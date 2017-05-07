@@ -68,10 +68,7 @@ cm1 = confusionMatrix(cm)
 cm1
 ```
 
-
-```{r}
-plotnet(diabetes_nnet)
-```
+Accuracy of **72.2%** achieved.
 
 
 ## General Regression Neural Network
@@ -83,12 +80,12 @@ diabetes_test$positive.test = as.numeric(as.character(diabetes_test$positive.tes
 
 # Building the GRNN
 diabetes_gnet = learn(set = diabetes_train, variable.column = length(diabetes_train))
-diabetes_gnet = smooth(diabetes_gnet, sigma = 0.5)
+diabetes_gnet = smooth(diabetes_gnet, sigma = 2.8)
 
 diabetes_test$predict = -1
 diabetes_testsub = diabetes_test[, 1:8]
 
-vec = as.matrix(diabetes_testsub[1, ])
+vec = as.matrix(diabetes_testsub[7, ])
 res = guess(diabetes_gnet, vec)
 
 for(i in 1:nrow(diabetes_testsub)) {
@@ -105,6 +102,17 @@ for(i in 1:nrow(diabetes_testsub)) {
 # Rounding predictions
 diabetes_test$predictclass = round(diabetes_test$predict)
 ```
+
+## Accuracy of Test Set
+```{r}
+result_size = nrow(diabetes_test)
+result_correct = nrow(diabetes_test[diabetes_test$predictclass == diabetes_test$positive.test, ])
+grnn_accuracy = result_correct / result_size
+grnn_accuracy
+```
+
+Accuracy of **67.4%** achieved on test set.
+
 
 
 # Neural Network Emsemble for Wine Quality Dataset
