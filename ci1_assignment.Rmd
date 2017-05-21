@@ -38,20 +38,12 @@ write.table(diabetes_train, sep = ',', file = './datasets/Diabetes_train.csv', r
 write.table(diabetes_test, sep = ',', file = './datasets/Diabetes_test.csv', row.names = F)
 ```
 
-```{r}
-# Loading neural net packages
-# install.packages(c('nnet', 'neuralnet', 'pnn', 'RSNNS', 'NeuralNetTools'))
-library(nnet)
-library(neuralnet)
-library(grnn)
-library(RSNNS)
-library(NeuralNetTools)
-```
 
 ## Single-Layer Neural Network
 
 ```{r}
 # Building the neural net model
+library(nnet)
 diabetes_nnet = nnet(positive.test ~ ., data = diabetes_train,
                      size = 8, maxit = 10000, decay = 0.0001)
 
@@ -61,82 +53,161 @@ summary(diabetes_nnet)
 
 ```{r}
 # Prediction and confusion matrix
-pred = predict(diabetes_nnet, newdata = diabetes_test, type = 'class')
-cm = table(true = diabetes_test$positive.test, predicted = pred)
+test_pred = predict(diabetes_nnet, newdata = diabetes_test, type = 'class')
 library(caret)
-cm1 = confusionMatrix(cm)
-cm1
+cm_nn = confusionMatrix(table(true = diabetes_test$positive.test, predicted = test_pred))
+cm_nn
 ```
 
-Accuracy of **72.2%** achieved.
+Accuracy of **72.2%** achieved on test set with single-layer neural network.
 
 
-## General Regression Neural Network
+## Neural Networks with Feature Extraction
+```{r}
+diabetes_pcann = pcaNNet(positive.test ~ ., data = diabetes_train,
+                         size = 8, maxit = 10000, decay = 0.0001)
+```
 
 ```{r}
-# Unfactorizing class variable
-diabetes_train$positive.test = as.numeric(as.character(diabetes_train$positive.test))
-diabetes_test$positive.test = as.numeric(as.character(diabetes_test$positive.test))
+# Prediction and confusion matrix
+test_pred_pcann = predict(diabetes_pcann, newdata = diabetes_test, type = 'class')
 
-# Building the GRNN
-diabetes_gnet = learn(set = diabetes_train, variable.column = length(diabetes_train))
-diabetes_gnet = smooth(diabetes_gnet, sigma = 2.8)
-
-diabetes_test$predict = -1
-diabetes_testsub = diabetes_test[, 1:8]
-
-vec = as.matrix(diabetes_testsub[7, ])
-res = guess(diabetes_gnet, vec)
-
-for(i in 1:nrow(diabetes_testsub)) {
-  vec = as.matrix(diabetes_testsub[i, ])
-  res = guess(diabetes_gnet, vec)
-  
-  if(anyNA(res)) {
-    cat("Entry ",i," Generated NaN result!\n")
-  } else{
-    diabetes_test$predict[i] = res
-  }
-}
-
-# Rounding predictions
-diabetes_test$predictclass = round(diabetes_test$predict)
+cm_pcann = confusionMatrix(table(true = diabetes_test$positive.test, predicted = test_pred_pcann))
+cm_pcann
 ```
 
-## Accuracy of Test Set
+
+## Ensemble Learning
 ```{r}
-result_size = nrow(diabetes_test)
-result_correct = nrow(diabetes_test[diabetes_test$predictclass == diabetes_test$positive.test, ])
-grnn_accuracy = result_correct / result_size
-grnn_accuracy
+set.seed(111)
+control1 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+
+# NN Fits
+fit.nn = train(positive.test ~ ., data = diabetes_train, method = 'nnet', metric = 'Accuracy', trControl = control1)
+fit.pcann = train(positive.test ~ ., data = diabetes_train, method = 'pcaNNet', metric = 'Accuracy', trControl = control1)
+
+# Result summary
+result1 = resamples(list(nn = fit.nn, pcann = fit.pcann))
+summary(result1)
+dotplot(result1)
 ```
 
-Accuracy of **67.4%** achieved on test set.
-
+PCANN performs better at a mean accuracy of **77.1%**.
 
 
 # Neural Network Emsemble for Wine Quality Dataset
 
 ```{r}
 # Data import
-# wine = read.csv('./datasets/winequality-white.csv')
-# 
-# summary(wine)
+wine = read.csv('./datasets/winequality-white.csv')
+
+summary(wine)
 ```
 
 ```{r}
 # Train-test split
-# set.seed(111)
-# wine$split = sample.split(wine$quality, SplitRatio = 0.7)
-# 
-# wine_train = subset(wine, split == T)
-# wine_test = subset(wine, split == F)
-# 
-# # Excluding split columns
-# wine_train = wine_train[-13]
-# wine_test = wine_test[-13]
-# 
-# # Writing CSV for train and test
-# write.table(wine_train, sep = ',', file = './datasets/winequality_train.csv', row.names = F)
-# write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.names = F)
+set.seed(111)
+wine$split = sample.split(wine$quality, SplitRatio = 0.7)
+
+wine_train = subset(wine, split == T)
+wine_test = subset(wine, split == F)
+
+# Excluding split columns
+wine_train = wine_train[-13]
+wine_test = wine_test[-13]
+
+# Writing CSV for train and test
+write.table(wine_train, sep = ',', file = './datasets/winequality_train.csv', row.names = F)
+write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.names = F)
 ```
+
+```{r}
+wine_nnet = nnet(quality ~ ., data = wine_train,
+                     size = 10, maxit = 1000, decay = 0.0001, linout = T)
+
+summary(wine_nnet)
+```
+
+```{r}
+wine_pred_nnet = predict(wine_nnet, newdata = wine_test)
+wine_pred_nnet = as.numeric(round(wine_pred_nnet))
+
+model_values0 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_nnet)
+defaultSummary(model_values0)
+```
+
+
+## Radial Basis Function (RBF) Neural Network
+```{r}
+# Building the RBF
+library(RSNNS)
+wine_rbfnet = rbf(x = wine_train[-12],
+                  y = wine_train[12],
+                  size = c(8),
+                  maxit = 1000,
+                  linOut = T)
+
+summary(wine_rbfnet)
+```
+
+```{r}
+# Prediction
+rbf_pred = predict(wine_rbfnet, newdata = wine_test[-12])
+rbf_pred = as.numeric(round(rbf_pred))
+
+model_values1 = data.frame(obs = as.numeric(wine_test$quality), pred = rbf_pred)
+defaultSummary(model_values1)
+```
+
+## Bayesian Regularized Neural Network
+```{r}
+library(brnn)
+wine_brnn = brnn(quality ~ ., data = wine_train,
+                 neurons = 8,
+                 epochs = 1000)
+```
+
+```{r}
+# Prediction
+wine_pred_brnn = predict(wine_brnn, newdata = wine_test)
+wine_pred_brnn = as.numeric(round(wine_pred_brnn))
+
+# l = sort(union(wine_pred_brnn, wine_test$quality))
+# wine_pred_brnn = factor(as.character(wine_pred_brnn), levels = l)
+
+# Confusion Matrix
+# cm_table = table(wine_pred_brnn, factor(as.character(wine_test$quality), levels = l))
+# cm_brnn = confusionMatrix(cm_table)
+# cm_brnn
+
+model_values2 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_brnn)
+defaultSummary(model_values2)
+```
+
+## Ensemble Learning
+```{r}
+set.seed(111)
+control1 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+
+# NN Fits
+fit.nn = train(quality ~ ., data = wine_train, method = 'rbf', trControl = control1)
+fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
+
+# Result summary
+result1 = resamples(list(nn = fit.nn, pcann = fit.pcann))
+summary(result1)
+dotplot(result1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
