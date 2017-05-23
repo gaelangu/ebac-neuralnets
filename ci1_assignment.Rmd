@@ -111,6 +111,7 @@ summary(result1)
 dotplot(result1)
 ```
 
+
 PCANN performs better at a mean accuracy of **77.1%**.
 
 
@@ -207,17 +208,28 @@ defaultSummary(model_values2)
 ## Ensemble Learning
 ```{r}
 library(caret)
+library(caretEnsemble)
 set.seed(111)
-control1 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+control1 = trainControl(method = 'cv', number = 10, repeats = 3,savePredictions=TRUE)
 
 # NN Fits
-fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
-fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
+#fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
+#fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
+algorithmList <- c( 'nnet', 'rbf') #, 'brnn'
+models <- caretList(quality~., data=wine_train, trControl=control1, methodList=algorithmList)
+result1 <- resamples(models)
 
 # Result summary
-result1 = resamples(list(nn = fit.nn, pcann = fit.pcann))
+#result1 = resamples(list(nn = fit.nn, pcann = fit.pcann))
 summary(result1)
 dotplot(result1)
+
+
+#names(getModelInfo())
+
+
+
+
 ```
 
 
