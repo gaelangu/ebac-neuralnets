@@ -48,6 +48,24 @@ diabetes_nnet = nnet(positive.test ~ ., data = diabetes_train,
                      size = 8, maxit = 10000, decay = 0.0001)
 
 summary(diabetes_nnet)
+
+```
+
+```{r}
+require(RCurl)
+ 
+root.url<-'https://gist.githubusercontent.com/fawda123'
+raw.fun<-paste(
+  root.url,
+  '5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',
+  sep='/'
+  )
+script<-getURL(raw.fun, ssl.verifypeer = FALSE)
+eval(parse(text = script))
+rm('script','raw.fun')
+```
+```{r}
+plot(diabetes_nnet)
 ```
 
 
@@ -66,6 +84,7 @@ Accuracy of **72.2%** achieved on test set with single-layer neural network.
 ```{r}
 diabetes_pcann = pcaNNet(positive.test ~ ., data = diabetes_train,
                          size = 8, maxit = 10000, decay = 0.0001)
+summary(diabetes_pcann)
 ```
 
 ```{r}
@@ -101,7 +120,7 @@ PCANN performs better at a mean accuracy of **77.1%**.
 # Data import
 wine = read.csv('./datasets/winequality-white.csv')
 
-summary(wine)
+head(wine)
 ```
 
 ```{r}
@@ -125,7 +144,7 @@ write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.
 wine_nnet = nnet(quality ~ ., data = wine_train,
                      size = 10, maxit = 1000, decay = 0.0001, linout = T)
 
-summary(wine_nnet)
+plot(wine_nnet)
 ```
 
 ```{r}
@@ -165,6 +184,7 @@ library(brnn)
 wine_brnn = brnn(quality ~ ., data = wine_train,
                  neurons = 8,
                  epochs = 1000)
+wine_brnn
 ```
 
 ```{r}
@@ -186,11 +206,12 @@ defaultSummary(model_values2)
 
 ## Ensemble Learning
 ```{r}
+library(caret)
 set.seed(111)
 control1 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
 
 # NN Fits
-fit.nn = train(quality ~ ., data = wine_train, method = 'rbf', trControl = control1)
+fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
 fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
 
 # Result summary
