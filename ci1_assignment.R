@@ -132,6 +132,13 @@ wine$split = sample.split(wine$quality, SplitRatio = 0.7)
 wine_train = subset(wine, split == T)
 wine_test = subset(wine, split == F)
 
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+wine_train <- as.data.frame(lapply(wine_train, normalize))
+wine_test <- as.data.frame(lapply(wine_test, normalize))
+
 # Excluding split columns
 wine_train = wine_train[-13]
 wine_test = wine_test[-13]
@@ -215,7 +222,7 @@ control1 = trainControl(method = 'cv', number = 10, repeats = 3,savePredictions=
 # NN Fits
 #fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
 #fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
-algorithmList <- c( 'brnn', 'rbf') #, 'brnn'
+algorithmList <- c( 'rbfDDA','nnet') #, 'brnn', 'rbf'
 models <- caretList(quality~., data=wine_train, trControl=control1, methodList=algorithmList)
 result1 <- resamples(models)
 
