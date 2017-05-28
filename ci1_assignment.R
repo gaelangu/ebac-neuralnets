@@ -213,6 +213,7 @@ defaultSummary(model_values2)
 
 #' 
 #' ## Ensemble Learning
+#' 
 ## ------------------------------------------------------------------------
 library(caret)
 library(caretEnsemble)

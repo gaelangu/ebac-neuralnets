@@ -127,6 +127,7 @@ head(wine)
 ```{r}
 # Train-test split
 set.seed(111)
+library(caTools)
 wine$split = sample.split(wine$quality, SplitRatio = 0.7)
 
 wine_train = subset(wine, split == T)
@@ -147,7 +148,10 @@ write.table(wine_train, sep = ',', file = './datasets/winequality_train.csv', ro
 write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.names = F)
 ```
 
+
+# Single-Layer Neural Network
 ```{r}
+library(nnet)
 wine_nnet = nnet(quality ~ ., data = wine_train,
                      size = 10, maxit = 1000, decay = 0.0001, linout = T)
 
@@ -159,6 +163,7 @@ wine_pred_nnet = predict(wine_nnet, newdata = wine_test)
 wine_pred_nnet = as.numeric(round(wine_pred_nnet))
 
 model_values0 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_nnet)
+library(caret)
 defaultSummary(model_values0)
 ```
 
@@ -199,21 +204,35 @@ wine_brnn
 wine_pred_brnn = predict(wine_brnn, newdata = wine_test)
 wine_pred_brnn = as.numeric(round(wine_pred_brnn))
 
-# l = sort(union(wine_pred_brnn, wine_test$quality))
-# wine_pred_brnn = factor(as.character(wine_pred_brnn), levels = l)
-
-# Confusion Matrix
-# cm_table = table(wine_pred_brnn, factor(as.character(wine_test$quality), levels = l))
-# cm_brnn = confusionMatrix(cm_table)
-# cm_brnn
-
 model_values2 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_brnn)
 defaultSummary(model_values2)
 ```
 
+## Quantile Regression Neural Network
+```{r}
+library(qrnn)
+wine_qrnn = qrnn.fit(x = as.matrix(wine_train[-12]),
+                     y = as.matrix(wine_train[12]),
+                     n.hidden = 10,
+                     iter.max = 10000,
+                     Th = linear)
+```
+
+```{r}
+# Prediction
+wine_pred_qrnn = qrnn.predict(x = as.matrix(wine_test[-12]), parms = wine_qrnn)
+wine_pred_qrnn = as.numeric(round(wine_pred_qrnn))
+
+model_values3 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_qrnn)
+library(caret)
+defaultSummary(model_values3)
+```
+
+
 ## Ensemble Learning
 ```{r}
 library(caret)
+<<<<<<< Updated upstream
 library(caretEnsemble)
 set.seed(111)
 control1 = trainControl(method = 'cv', number = 10, repeats = 3,savePredictions=TRUE)
@@ -262,6 +281,13 @@ model_preds["svmRadial"]
 
 
 
+=======
+control2 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+
+set.seed(111)
+fit.rbf = train(quality ~ ., data = wine_train, method = 'rbf', metric = 'RMSE', trControl = control2)
+
+>>>>>>> Stashed changes
 ```
 
 
