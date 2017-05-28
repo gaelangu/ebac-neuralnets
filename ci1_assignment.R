@@ -222,9 +222,32 @@ control1 = trainControl(method = 'cv', number = 10, repeats = 3,savePredictions=
 # NN Fits
 #fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
 #fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
-algorithmList <- c( 'rbfDDA','nnet') #, 'brnn', 'rbf'
-models <- caretList(quality~., data=wine_train, trControl=control1, methodList=algorithmList)
-result1 <- resamples(models)
+algorithmList <- c( 'rbfDDA','DENFIS') #, 'brnn'
+#models <- caretList(quality~., data=wine_train, trControl=control1, methodList=algorithmList)
+
+control2 <- trainControl(
+  method="boot",
+  number=25,
+  savePredictions="final",
+  classProbs=TRUE,
+  index=createResample(wine_train$quality, 25)
+)
+
+model_list <- caretList(
+  quality~., data=wine_train,
+  trControl=control2,
+  methodList=c("svmRadial", "dnn")
+)
+#library("mlbench")
+#library("pROC")
+#data(Sonar)
+
+greedy_ensemble <- caretEnsemble(
+  model_list,
+  trControl=control2)
+
+summary(greedy_ensemble)
+result1 <- resamples(model_list)
 
 # Result summary
 #result1 = resamples(list(nn = fit.nn, pcann = fit.pcann))
@@ -232,7 +255,9 @@ summary(result1)
 dotplot(result1)
 
 
-#names(getModelInfo())
+model_preds <- lapply(model_list, predict, newdata=wine_test[-12])
+enseble_predict <-round (predict(greedy_ensemble,wine_test[-12] ))
+
 
 
 
