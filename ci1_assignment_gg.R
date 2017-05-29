@@ -1,14 +1,4 @@
----
-title: "Computational Intelligence I Assignment"
-author: "Gaelan Gu, Sunil Prakash"
-output: word_document
----
-
-# Neural Network Ensemble for Diabetes Dataset
-
-We will be using R to construct our Neural Network (NN) ensemble for the Diabetes dataset. In this dataset, we are attempting to predict the class variable, which we named as *positive.test*, to determine if a patient is positive for diabetes based on a given set of 8 continuous attributes.
-
-```{r}
+## Neural Network Ensemble for the Diabetes Dataset
 # Data import
 diabetes = read.csv('./datasets/Diabetes.csv', header = F)
 colnames(diabetes) = c('no.of.times.preg', 'plasma.glucose.conc', 'diastolic.pressure',
@@ -16,14 +6,12 @@ colnames(diabetes) = c('no.of.times.preg', 'plasma.glucose.conc', 'diastolic.pre
                        'age', 'positive.test')
 
 # Factorizing class variable
-diabetes$positive.test = factor(as.character(diabetes$positive.test))
+diabetes$positive.test = as.factor(as.character(diabetes$positive.test))
 
 summary(diabetes)
-```
 
-We have factorized our class variable and ascertained that there are no missing values in the dataset.
+# ------------------------------------------------------------------------
 
-```{r}
 # Train-test split
 library(caTools)
 set.seed(111)
@@ -37,83 +25,63 @@ diabetes_train = diabetes_train[-10]
 diabetes_test = diabetes_test[-10]
 
 # Writing CSV for train and test
-# write.table(diabetes_train, sep = ',', file = './datasets/Diabetes_train.csv', row.names = F)
-# write.table(diabetes_test, sep = ',', file = './datasets/Diabetes_test.csv', row.names = F)
-```
+write.table(diabetes_train, sep = ',', file = './datasets/Diabetes_train.csv', row.names = F)
+write.table(diabetes_test, sep = ',', file = './datasets/Diabetes_test.csv', row.names = F)
 
-We split our dataset into training and testing sets using the ratio 70:30. We will run 2 neural networks on the training set.
+# ------------------------------------------------------------------------
 
-## Single-Layer Neural Network
-
-Using a single-layer NN, we used 6 neurons for the hidden layer, set the maximum number of iterations at 10,000 and a learning rate of 0.0001. We keep the learning rate small in order not to exceed the local minimum.
-
-```{r}
+# Single-Layer Neural Network
 # Building the neural net model
 library(nnet)
 diabetes_nnet = nnet(positive.test ~ ., data = diabetes_train,
-                     size = 6, maxit = 10000, decay = 0.0001)
+                     size = 8, maxit = 10000, decay = 0.0001)
 
-diabetes_nnet
-```
+summary(diabetes_nnet)
 
-```{r}
+# ------------------------------------------------------------------------
+
 # Neural network plot
 require(RCurl)
- 
+
 root.url<-'https://gist.githubusercontent.com/fawda123'
 raw.fun<-paste(
   root.url,
   '5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',
   sep='/'
-  )
+)
 script<-getURL(raw.fun, ssl.verifypeer = FALSE)
 eval(parse(text = script))
 rm('script','raw.fun')
 
 plot(diabetes_nnet)
-```
 
-6 neurons are used in the hidden layer as this configuration produced the best accuracy, and also because it is optimally between the number of independent variables (8) and output node (1).
+# ------------------------------------------------------------------------
 
-```{r}
 # Prediction and confusion matrix
 test_pred = predict(diabetes_nnet, newdata = diabetes_test, type = 'class')
 library(caret)
 cm_nn = confusionMatrix(table(true = diabetes_test$positive.test, predicted = test_pred))
 cm_nn
-```
 
-Accuracy of **65.2%** achieved on test set with single-layer neural network.
+# ------------------------------------------------------------------------
 
-
-## Neural Networks with Feature Extraction
-
-We will apply principal component analysis (PCA) to the training set before applying a single-layer NN to it. We will also keep the number of neurons, maxit and decay values the same as before.
-
-```{r}
+# Neural Networks with Feature Extraction
+# Building the neural net model
 diabetes_pcann = pcaNNet(positive.test ~ ., data = diabetes_train,
-                         size = 6, maxit = 10000, decay = 0.0001)
+                         size = 8, maxit = 10000, decay = 0.0001)
+summary(diabetes_pcann)
 
-diabetes_pcann
-```
+# ------------------------------------------------------------------------
 
-```{r}
 # Prediction and confusion matrix
 test_pred_pcann = predict(diabetes_pcann, newdata = diabetes_test, type = 'class')
 
 cm_pcann = confusionMatrix(table(true = diabetes_test$positive.test, predicted = test_pred_pcann))
 cm_pcann
-```
 
-An accuracy rate of **70.0%** was achieved on the test set using a single-layer NN with a PCA step (PCANN).
+# ------------------------------------------------------------------------
 
-## Ensemble Learning
-
-Let's see if the accuracy rates can be improved with a NN ensemble with the models. The type of ensemble which we are using is of the stacking type. We train the ensemble for combining the predictions of the individual learning algorithms to achieve a higher accuracy.
-
-The train control which we will use in training is a repeated 10-fold cross-validation iterated 3 times. We train the individual models first.
-
-```{r}
+# Ensemble Learning
 # Coercing class variable into syntactically valid names
 diabetes_train$positive.test = make.names(diabetes_train$positive.test)
 
@@ -131,32 +99,21 @@ models1 = caretList(positive.test ~ ., data = diabetes_train,
 result1 = resamples(models1)
 summary(result1)
 dotplot(result1)
-```
 
-```{r}
-set.seed(111)
 stack_control1 = trainControl(method = 'repeatedcv', number = 10, repeats = 3)
 stack_glm1 = caretStack(models1, method = 'glm', metric = 'Accuracy', trControl = stack_control1)
 print(stack_glm1)
-```
 
-The stacked ensemble mode performs at an accuracy of **77.2%**, which is higher than the individual models. 
+# ------------------------------------------------------------------------
 
-
--------------------------------------------------------------------------------------------------------
-
-# Neural Network Emsemble for Wine Quality Dataset
-
-For the Wine dataset, we are attempting to predict the *quality* variable, which ranges from 0 to 10. This will be a regression exercise using 11 continuous predictor variables, which describe several properties of the wine content.
-
-```{r}
+## Neural Network Emsemble for Wine Quality Dataset
 # Data import
 wine = read.csv('./datasets/winequality-white.csv')
 
-summary(wine)
-```
+head(wine)
 
-```{r}
+# ------------------------------------------------------------------------
+
 # Train-test split
 set.seed(111)
 wine$split = sample.split(wine$quality, SplitRatio = 0.7)
@@ -178,15 +135,10 @@ wine_test = wine_test[-13]
 # Writing CSV for train and test
 write.table(wine_train, sep = ',', file = './datasets/winequality_train.csv', row.names = F)
 write.table(wine_test, sep = ',', file = './datasets/winequality_test.csv', row.names = F)
-```
 
-Similarly, the dataset will be split into training and testing sets using the same ratio as before. We conduct an additional step of scaling the predictor variables using the minimum and maximum values of each column.
+# ------------------------------------------------------------------------
 
-# Support Vector Machine (SVM) with Radial Basis Function (RBF) Kernel
-
-We will first build a SVM with a RBF kernel, but we leave the determination of the hyperparameters up to the kernel. This is done by setting *kpar* parameter to "automatic".
-
-```{r}
+# SVM with Radial Basis Function Kernel
 # Building the neural network model
 library(kernlab)
 wine_svmrbf = ksvm(quality ~ .,
@@ -194,25 +146,19 @@ wine_svmrbf = ksvm(quality ~ .,
                    kernel = 'rbfdot',
                    kpar = 'automatic')
 
-wine_svmrbf
-```
+summary(wine_svmrbf)
 
-The kernel recommends a sigma hyperparameter of 0.077. In the case of an epsilon regression, the parameters recommended are epsilon = 0.1 and cost = 1.
+# ------------------------------------------------------------------------
 
-```{r}
+# Prediction
 rbf_pred = predict(wine_svmrbf, newdata = wine_test[-12])
 
 model_values1 = data.frame(obs = as.numeric(wine_test$quality), pred = rbf_pred)
 defaultSummary(model_values1)
-```
 
-We obtain a root mean squared error (RMSE) of **0.16** from the SVM with RBF kernel.
+# ------------------------------------------------------------------------
 
-## Stacked AutoEncoder Deep Neural Network
-
-Next we will use a deep neural network for training, however we will only be using one hidden layer with 8 neurons. Learning rate will be set to a small figure to avoid missing the local minima.
-
-```{r}
+# Stacked AutoEncoder Deep Neural Network
 # Building the neural network model
 library(deepnet)
 wine_dnn = dbn.dnn.train(x = as.matrix(wine_train[1:11]),
@@ -222,23 +168,17 @@ wine_dnn = dbn.dnn.train(x = as.matrix(wine_train[1:11]),
                          numepochs = 10)
 
 summary(wine_dnn)
-```
 
-```{r}
+# ------------------------------------------------------------------------
+
 # Prediction
 wine_pred_dnn = nn.predict(wine_dnn, x = as.matrix(wine_test[1:11]))
 
 model_values2 = data.frame(obs = as.numeric(wine_test$quality), pred = wine_pred_dnn)
 defaultSummary(model_values2)
-```
 
-We obtain a slightly improved RSME of **0.14** in this case.
+## ------------------------------------------------------------------------
 
-## Ensemble Learning
-
-We will stack the models in this ensemble to determine if we can obtain an even lower RMSE. 25 bootstrapped samples will be obtained from the training set to train the models and this is reflected in the train control parameter.
-
-```{r}
 # Ensemble Learning
 library(caret)
 library(caretEnsemble)
@@ -266,23 +206,12 @@ result2 <- resamples(models2)
 # Result summary
 summary(result2)
 dotplot(result2)
-```
 
-```{r}
+# ------------------------------------------------------------------------
+
 set.seed(111)
 stack_control2 = trainControl(method = 'boot', number = 25)
 stack_glm2 = caretStack(models2, method = 'glm', metric = 'RMSE', trControl = stack_control2)
 print(stack_glm2)
-```
 
-The ensemble model has performed better at a RMSE of *0.12*.
-
-
-
-
-
-
-
-
-
-
+# ------------------------------------------------------------------------
