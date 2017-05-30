@@ -220,6 +220,7 @@ library(caretEnsemble)
 set.seed(111)
 control1 = trainControl(method = 'cv', number = 10, repeats = 3,savePredictions=TRUE)
 
+
 # NN Fits
 #fit.nn = train(quality~ ., data = wine_train, method = 'rbf', trControl = control1)
 #fit.pcann = train(quality ~ ., data = wine_train, method = 'brnn', metric = 'Accuracy', trControl = control1)
